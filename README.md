@@ -24,11 +24,15 @@ A fragment is a piece of captured knowledge with:
 
 This repo should become the modern successor to the one-file GUI experiments.
 
+Current Ubuntu objective: build the local Ollama/Tesseract screenshot reader described in `NEXT_OBJECTIVE.md`.
+
 It contains:
 
 - `src/noteman_wcs/domain.py`: domain model for workspaces, projects, notes, sources, locators, fragments, and assets
 - `src/noteman_wcs/storage.py`: file-based repository for projects, metadata, and markdown export
+- `NEXT_OBJECTIVE.md`: immediate Ubuntu/Python development target
 - `docs/ONTOLOGY.md`: contextual ontology derived from the old Visual Basic, Python, and C# versions
+- `docs/OLLAMA_SCREENSHOT_PROPOSAL.md`: project proposal for local screenshot reading
 - `docs/WORKSPACE_FORMAT.md`: shared storage contract for Python and C# implementations
 - `docs/REPOSITORY_STRATEGY.md`: what to do with old and future repositories
 
