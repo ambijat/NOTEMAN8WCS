@@ -1,0 +1,88 @@
+# Repository Strategy
+
+## Existing Repositories
+
+### `ambijat/NOTEMAN`
+
+Role: legacy archive and lineage record.
+
+Retain:
+
+- `nsu6.py`: first Python capture workflow
+- `nsu62.py`: Linux-oriented OCR folder workflow
+- `nsu62w.py`: Windows/Tesseract-location workflow
+- `nsu63w.py`: Windows clipboard-image OCR workflow
+- `nsu62.cs`: C# translation reference
+
+Dump or quarantine:
+
+- `nmtext.py`: unrelated prime-number exercise, not part of NoteMan
+- duplicate experimental variants once their unique behavior is documented
+- compiled executables if source exists and releases can hold binaries instead
+
+Recommended action:
+
+- keep the repo public as `NOTEMAN Legacy`
+- add a lineage README
+- avoid adding new feature work there
+- use it as the source archive for behavioral archaeology
+
+### `ambijat/NOTEMAN8WCS`
+
+Role: modern successor.
+
+Retain:
+
+- the research-student purpose from the original README
+- the C# ambition as a future GUI option
+
+Change:
+
+- make this the ontology, storage, and reference implementation repo
+- keep GUI separate from domain logic
+- store notes as Markdown plus metadata
+
+## Proposed New Repositories
+
+These should be created when the core is stable enough to split.
+
+### `NOTEMAN-DESKTOP`
+
+Desktop GUI for Windows/Linux/macOS.
+
+Responsibilities:
+
+- capture panel
+- review/search panel
+- OCR controls
+- project browser
+- settings
+
+Should depend on WCS core concepts rather than reimplementing storage.
+
+### `NOTEMAN-OCR`
+
+Extractor adapters.
+
+Responsibilities:
+
+- Tesseract integration
+- clipboard image support
+- folder image OCR
+- PDF image extraction
+- OCR cleanup and confidence metadata
+
+### `NOTEMAN-RESEARCH-KIT`
+
+Research workflow templates and student-facing guidance.
+
+Responsibilities:
+
+- anti-plagiarism note-taking workflows
+- source templates
+- thesis/chapter note structures
+- examples for books, articles, lectures, and PDFs
+
+## Decision
+
+Do not create many empty repos immediately. Empty repos create administrative weight without architecture. Build `NOTEMAN8WCS` until the boundaries become real, then split out desktop, OCR, and research-kit repositories.
