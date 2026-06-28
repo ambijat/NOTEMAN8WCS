@@ -1,6 +1,6 @@
-# NOTEMAN8WCS
+# noteman-wcs
 
-NOTEMAN8WCS is the new home for NoteMan as a Workspace Capture System.
+noteman-wcs is the new home for NoteMan as a Workspace Capture System.
 
 The old NoteMan programs proved the core workflow: select a folder, create a note, paste or OCR material, attach a reference/page marker, export it, and later review it. This repository rethinks that idea as a research-note architecture built around referenced fragments rather than plain text files alone.
 
@@ -36,7 +36,7 @@ It contains:
 The proposed future ecosystem is:
 
 - `NOTEMAN`: legacy archive and historical reference
-- `NOTEMAN8WCS`: core ontology, storage, and reference implementation
+- `noteman-wcs`: core ontology, storage, and reference implementation
 - `NOTEMAN-DESKTOP`: future GUI shell over the WCS core
 - `NOTEMAN-OCR`: future OCR/extraction adapters
 - `NOTEMAN-RESEARCH-KIT`: future templates, workflows, and documentation for research students

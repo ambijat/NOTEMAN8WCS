@@ -27,7 +27,7 @@ Recommended action:
 - avoid adding new feature work there
 - use it as the source archive for behavioral archaeology
 
-### `ambijat/NOTEMAN8WCS`
+### `noteman-wcs`
 
 Role: modern successor.
 
@@ -85,4 +85,4 @@ Responsibilities:
 
 ## Decision
 
-Do not create many empty repos immediately. Empty repos create administrative weight without architecture. Build `NOTEMAN8WCS` until the boundaries become real, then split out desktop, OCR, and research-kit repositories.
+Do not create many empty repos immediately. Empty repos create administrative weight without architecture. Build `noteman-wcs` until the boundaries become real, then split out desktop, OCR, and research-kit repositories.
