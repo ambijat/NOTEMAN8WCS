@@ -46,9 +46,9 @@ Change:
 
 These should be created when the core is stable enough to split.
 
-### `NOTEMAN-DESKTOP`
+### `noteman-desktop`
 
-Desktop GUI for Windows/Linux/macOS.
+Windows C# desktop GUI.
 
 Responsibilities:
 
@@ -58,7 +58,7 @@ Responsibilities:
 - project browser
 - settings
 
-Should depend on WCS core concepts rather than reimplementing storage.
+Should depend on WCS core concepts and share the same workspace format as the Python implementation.
 
 ### `NOTEMAN-OCR`
 

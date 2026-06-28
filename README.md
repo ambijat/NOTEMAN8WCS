@@ -29,6 +29,7 @@ It contains:
 - `src/noteman_wcs/domain.py`: domain model for workspaces, projects, notes, sources, locators, fragments, and assets
 - `src/noteman_wcs/storage.py`: file-based repository for projects, metadata, and markdown export
 - `docs/ONTOLOGY.md`: contextual ontology derived from the old Visual Basic, Python, and C# versions
+- `docs/WORKSPACE_FORMAT.md`: shared storage contract for Python and C# implementations
 - `docs/REPOSITORY_STRATEGY.md`: what to do with old and future repositories
 
 ## Repository Ecosystem
@@ -37,7 +38,7 @@ The proposed future ecosystem is:
 
 - `NOTEMAN`: legacy archive and historical reference
 - `noteman-wcs`: core ontology, storage, and reference implementation
-- `NOTEMAN-DESKTOP`: future GUI shell over the WCS core
+- `noteman-desktop`: Windows C# GUI shell over the WCS core
 - `NOTEMAN-OCR`: future OCR/extraction adapters
 - `NOTEMAN-RESEARCH-KIT`: future templates, workflows, and documentation for research students
 
