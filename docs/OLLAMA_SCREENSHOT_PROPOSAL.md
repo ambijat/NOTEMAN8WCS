@@ -119,8 +119,6 @@ Markdown example:
 ## Research Book, p. 12
 
 Extracted screenshot text or summary.
-
-<!-- method: image_ocr; fragment: fragment-id -->
 ```
 
 ## First Implementation Plan

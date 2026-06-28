@@ -48,6 +48,4 @@ def render_fragment(fragment: CaptureFragment) -> list[str]:
         "",
         fragment.text.strip(),
         "",
-        f"<!-- method: {fragment.method.value}; fragment: {fragment.id} -->",
-        "",
     ]
