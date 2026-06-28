@@ -4,6 +4,8 @@ noteman-wcs is the new home for NoteMan as a Workspace Capture System.
 
 The old NoteMan programs proved the core workflow: select a folder, create a note, paste or OCR material, attach a reference/page marker, export it, and later review it. This repository rethinks that idea as a research-note architecture built around referenced fragments rather than plain text files alone.
 
+Before changing this repository, read `docs/CODING_TESTAMENT.md`. It records the research-ethics and compartmentalization principles that guide the project.
+
 ## Core Idea
 
 The central object is a captured fragment:
@@ -31,6 +33,7 @@ It contains:
 - `src/noteman_wcs/domain.py`: domain model for workspaces, projects, notes, sources, locators, fragments, and assets
 - `src/noteman_wcs/storage.py`: file-based repository for projects, metadata, and markdown export
 - `NEXT_OBJECTIVE.md`: immediate Ubuntu/Python development target
+- `docs/CODING_TESTAMENT.md`: read-before-coding design canon
 - `docs/ONTOLOGY.md`: contextual ontology derived from the old Visual Basic, Python, and C# versions
 - `docs/OLLAMA_SCREENSHOT_PROPOSAL.md`: project proposal for local screenshot reading
 - `docs/WORKSPACE_FORMAT.md`: shared storage contract for Python and C# implementations
