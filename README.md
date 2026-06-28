@@ -32,6 +32,8 @@ It contains:
 
 - `src/noteman_wcs/domain.py`: domain model for workspaces, projects, notes, sources, locators, fragments, and assets
 - `src/noteman_wcs/storage.py`: file-based repository for projects, metadata, and markdown export
+- `src/noteman_wcs/desktop_app.py`: Ubuntu/Python Tkinter desktop shell matching the Windows workflow
+- `src/noteman_wcs/prompts/`: local editable prompt corpus used by the clipboard prompt workbench
 - `NEXT_OBJECTIVE.md`: immediate Ubuntu/Python development target
 - `docs/CODING_TESTAMENT.md`: read-before-coding design canon
 - `docs/ONTOLOGY.md`: contextual ontology derived from the old Visual Basic, Python, and C# versions
@@ -58,6 +60,12 @@ This project currently has no external runtime dependencies.
 ```powershell
 python -m compileall src
 python -m unittest discover -s tests
+```
+
+Run the Python desktop shell:
+
+```bash
+PYTHONPATH=src python -m noteman_wcs.desktop_app
 ```
 
 ## Philosophy

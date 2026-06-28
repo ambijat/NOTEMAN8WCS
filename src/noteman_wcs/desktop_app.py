@@ -1,0 +1,285 @@
+"""Tkinter desktop shell for NoteMan WCS.
+
+This is the Ubuntu/Python counterpart to the Windows C# app. It keeps the same
+compartments: captured source fragments, prompt workbench, AI draft, accepted
+fragments, and intentional export.
+"""
+
+from __future__ import annotations
+
+import tkinter as tk
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
+
+from .domain import CaptureFragment, ExtractionMethod, Locator, LocatorKind, Note, Project, Source
+from .prompts import PromptTemplate, load_prompt_templates, render_prompt
+from .storage import FileProjectRepository, render_note_markdown
+
+
+class NoteManDesktopApp(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+        self.title("NoteMan Desktop")
+        self.geometry("1120x720")
+        self.minsize(900, 580)
+
+        self.workspace_path: Path | None = None
+        self.current_project: Project | None = None
+        self.current_note: Note | None = None
+        self.prompts = load_prompt_templates()
+
+        self._build_ui()
+        self._set_status("Select a workspace to begin.")
+
+    def _build_ui(self) -> None:
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=9)
+        self.columnconfigure(2, weight=11)
+        self.rowconfigure(0, weight=1)
+
+        left = ttk.Frame(self, padding=10)
+        left.grid(row=0, column=0, sticky="nsew")
+        left.columnconfigure(0, minsize=240)
+
+        ttk.Label(left, text="Workspace", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        ttk.Button(left, text="Choose Workspace", command=self.choose_workspace).grid(sticky="ew", pady=(0, 8))
+        self.workspace_label = ttk.Label(left, text="", wraplength=230)
+        self.workspace_label.grid(sticky="ew", pady=(0, 16))
+
+        ttk.Label(left, text="Project", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        self.project_var = tk.StringVar(value="Thesis Notes")
+        ttk.Entry(left, textvariable=self.project_var).grid(sticky="ew", pady=(0, 8))
+
+        ttk.Label(left, text="Note", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        self.note_var = tk.StringVar(value="Chapter One")
+        ttk.Entry(left, textvariable=self.note_var).grid(sticky="ew", pady=(0, 8))
+        ttk.Button(left, text="New Note", command=self.new_note).grid(sticky="ew", pady=(0, 16))
+
+        ttk.Label(left, text="Source", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        self.source_var = tk.StringVar(value="Reference...")
+        ttk.Entry(left, textvariable=self.source_var).grid(sticky="ew", pady=(0, 8))
+
+        ttk.Label(left, text="Page / Locator", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        page_frame = ttk.Frame(left)
+        page_frame.grid(sticky="ew", pady=(0, 16))
+        page_frame.columnconfigure(1, weight=1)
+        ttk.Button(page_frame, text="-", width=3, command=lambda: self.change_page(-1)).grid(row=0, column=0)
+        self.locator_var = tk.StringVar(value="1")
+        ttk.Entry(page_frame, textvariable=self.locator_var, justify="center").grid(row=0, column=1, sticky="ew")
+        ttk.Button(page_frame, text="+", width=3, command=lambda: self.change_page(1)).grid(row=0, column=2)
+
+        ttk.Button(left, text="Paste Clipboard Text", command=self.paste_clipboard_text).grid(sticky="ew", pady=(0, 8))
+        ttk.Button(left, text="Clipboard OCR (soon)", command=self.clipboard_ocr).grid(sticky="ew", pady=(0, 8))
+        ttk.Button(left, text="Undo Last Capture", command=self.undo_last_capture).grid(sticky="ew", pady=(0, 8))
+        ttk.Button(left, text="Export Note", command=self.export_note).grid(sticky="ew", pady=(0, 8))
+        ttk.Button(left, text="Clear Typed Draft", command=self.clear_typed_draft).grid(sticky="ew")
+
+        middle = ttk.Frame(self, padding=(0, 10, 10, 10))
+        middle.grid(row=0, column=1, sticky="nsew")
+        middle.rowconfigure(1, weight=1)
+        middle.columnconfigure(0, weight=1)
+        ttk.Label(middle, text="Typed / AI Draft", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        self.draft = tk.Text(middle, wrap="word", undo=True)
+        self.draft.grid(row=1, column=0, sticky="nsew")
+
+        right = ttk.Frame(self, padding=(0, 10, 10, 10))
+        right.grid(row=0, column=2, sticky="nsew")
+        right.rowconfigure(1, weight=1)
+        right.rowconfigure(3, minsize=240, weight=0)
+        right.columnconfigure(0, weight=1)
+        ttk.Label(right, text="Current Note Preview", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        self.preview = tk.Text(right, wrap="word", state="disabled")
+        self.preview.grid(row=1, column=0, sticky="nsew")
+
+        prompt_controls = ttk.Frame(right)
+        prompt_controls.grid(row=2, column=0, sticky="ew", pady=(12, 8))
+        prompt_controls.columnconfigure(0, weight=1)
+        prompt_controls.columnconfigure(1, weight=1)
+        self.prompt_titles = [prompt.title for prompt in self.prompts]
+        self.prompt_var = tk.StringVar(value=self.prompt_titles[0] if self.prompt_titles else "")
+        ttk.Combobox(prompt_controls, textvariable=self.prompt_var, values=self.prompt_titles, state="readonly").grid(
+            row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6)
+        )
+        ttk.Button(prompt_controls, text="Copy Prompt", command=self.copy_prompt).grid(
+            row=1, column=0, sticky="ew", padx=(0, 4)
+        )
+        ttk.Button(prompt_controls, text="Paste AI Result", command=self.paste_ai_result).grid(
+            row=1, column=1, sticky="ew", padx=(4, 0)
+        )
+
+        workbench = ttk.Frame(right)
+        workbench.grid(row=3, column=0, sticky="nsew")
+        workbench.rowconfigure(1, weight=1)
+        workbench.columnconfigure(0, weight=1)
+        header = ttk.Frame(workbench)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        header.columnconfigure(0, weight=1)
+        ttk.Label(header, text="AI Prompt Workbench", font=("", 10, "bold")).grid(row=0, column=0, sticky="w")
+        ttk.Button(header, text="Save Draft", command=self.save_draft_as_fragment).grid(row=0, column=1, sticky="e")
+        self.prompt_box = tk.Text(workbench, height=8, wrap="word", state="disabled")
+        self.prompt_box.grid(row=1, column=0, sticky="nsew")
+
+        self.status_var = tk.StringVar()
+        ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").grid(
+            row=1, column=0, columnspan=3, sticky="ew"
+        )
+
+    def choose_workspace(self) -> None:
+        selected = filedialog.askdirectory(title="Choose NoteMan workspace")
+        if selected:
+            self.workspace_path = Path(selected)
+            self.workspace_label.configure(text=str(self.workspace_path))
+            self._set_status("Workspace selected.")
+
+    def new_note(self) -> None:
+        project_name = self.project_var.get().strip()
+        note_title = self.note_var.get().strip()
+        if not project_name or not note_title:
+            messagebox.showinfo("NoteMan", "Project and note title are required.")
+            return
+        self.current_project = Project(project_name)
+        self.current_note = Note(note_title)
+        self.draft.delete("1.0", "end")
+        self._update_preview()
+        self._set_status("New note ready.")
+
+    def paste_clipboard_text(self) -> None:
+        self._ensure_note()
+        try:
+            text = self.clipboard_get()
+        except tk.TclError:
+            messagebox.showinfo("NoteMan", "Clipboard has no text.")
+            return
+        self._add_fragment(self._normalize_captured_text(text), ExtractionMethod.CLIPBOARD_TEXT)
+        self.clipboard_clear()
+
+    def clipboard_ocr(self) -> None:
+        messagebox.showinfo(
+            "NoteMan OCR",
+            "Clipboard OCR is not wired yet. It will read an image from the clipboard, run OCR, then capture text with source and page.",
+        )
+
+    def export_note(self) -> None:
+        if self.workspace_path is None:
+            messagebox.showinfo("NoteMan", "Choose a workspace before exporting.")
+            return
+        self._ensure_note()
+        draft_text = self._text_content(self.draft)
+        if draft_text:
+            self._add_fragment(draft_text, ExtractionMethod.MANUAL, clear_draft=True)
+        repo = FileProjectRepository(self.workspace_path)
+        note_path = repo.save_note(self.current_project, self.current_note)  # type: ignore[arg-type]
+        self._set_status(f"Exported to {note_path}")
+
+    def clear_typed_draft(self) -> None:
+        if not self._text_content(self.draft):
+            self._set_status("Typed draft is already empty. Use Undo Last Capture to remove preview text.")
+            return
+        if messagebox.askyesno("NoteMan", "Clear typed draft text? Captured preview fragments will stay."):
+            self.draft.delete("1.0", "end")
+            self._set_status("Typed draft cleared.")
+
+    def undo_last_capture(self) -> None:
+        if self.current_note is None or not self.current_note.fragments:
+            self._set_status("No captured fragments to undo.")
+            return
+        last = self.current_note.fragments.pop()
+        self._update_preview()
+        self._set_status(f"Removed last capture from {last.citation_heading()}.")
+
+    def copy_prompt(self) -> None:
+        fragment = self._latest_fragment()
+        if fragment is None:
+            self._set_status("Capture text first, then copy a prompt.")
+            return
+        prompt = render_prompt(self._selected_prompt(), fragment)
+        self._replace_text(self.prompt_box, prompt, disabled=True)
+        self.clipboard_clear()
+        self.clipboard_append(prompt)
+        self._set_status(f"Copied {self._selected_prompt().title} prompt for {fragment.citation_heading()}.")
+
+    def paste_ai_result(self) -> None:
+        try:
+            text = self.clipboard_get().strip()
+        except tk.TclError:
+            self._set_status("Clipboard has no AI result text.")
+            return
+        self._replace_text(self.draft, text)
+        self._set_status("Pasted AI result into Typed / AI Draft. Review it before saving.")
+
+    def save_draft_as_fragment(self) -> None:
+        draft_text = self._text_content(self.draft)
+        if not draft_text:
+            self._set_status("Typed / AI Draft is empty.")
+            return
+        self._add_fragment(draft_text, ExtractionMethod.MANUAL, clear_draft=True)
+
+    def change_page(self, delta: int) -> None:
+        try:
+            page = int(self.locator_var.get().strip())
+        except ValueError:
+            messagebox.showinfo("NoteMan", "Page must be a number.")
+            return
+        self.locator_var.set(str(max(1, page + delta)))
+
+    def _add_fragment(self, text: str, method: ExtractionMethod, clear_draft: bool = False) -> None:
+        self._ensure_note()
+        source_label = self.source_var.get().strip()
+        if not source_label or source_label == "Reference...":
+            source_label = "Unknown"
+        locator_value = self.locator_var.get().strip()
+        fragment = CaptureFragment(
+            text=text,
+            source=Source(source_label),
+            locator=Locator(locator_value, LocatorKind.PAGE if locator_value else LocatorKind.NONE),
+            method=method,
+        )
+        self.current_note.add_fragment(fragment)  # type: ignore[union-attr]
+        if clear_draft:
+            self.draft.delete("1.0", "end")
+        self._update_preview()
+        self._set_status(f"Captured fragment from {fragment.citation_heading()}.")
+
+    def _ensure_note(self) -> None:
+        if self.current_project is None or self.current_note is None:
+            self.new_note()
+
+    def _latest_fragment(self) -> CaptureFragment | None:
+        if self.current_note is None or not self.current_note.fragments:
+            return None
+        return self.current_note.fragments[-1]
+
+    def _selected_prompt(self) -> PromptTemplate:
+        selected = self.prompt_var.get()
+        return next((prompt for prompt in self.prompts if prompt.title == selected), self.prompts[0])
+
+    def _update_preview(self) -> None:
+        content = "" if self.current_note is None else render_note_markdown(self.current_note)
+        self._replace_text(self.preview, content, disabled=True)
+
+    def _replace_text(self, widget: tk.Text, text: str, disabled: bool = False) -> None:
+        widget.configure(state="normal")
+        widget.delete("1.0", "end")
+        widget.insert("1.0", text)
+        if disabled:
+            widget.configure(state="disabled")
+
+    def _set_status(self, message: str) -> None:
+        self.status_var.set(message)
+
+    @staticmethod
+    def _text_content(widget: tk.Text) -> str:
+        return widget.get("1.0", "end").strip()
+
+    @staticmethod
+    def _normalize_captured_text(value: str) -> str:
+        return value.replace("-\r\n", "").replace("-\n", "").replace("\r\n", " ").replace("\n", " ").strip()
+
+
+def main() -> None:
+    app = NoteManDesktopApp()
+    app.mainloop()
+
+
+if __name__ == "__main__":
+    main()
