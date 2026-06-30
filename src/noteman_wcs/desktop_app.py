@@ -76,7 +76,7 @@ class NoteManDesktopApp(tk.Tk):
         ttk.Button(left, text="Paste Clipboard Text", command=self.paste_clipboard_text).grid(sticky="ew", pady=(0, 8))
         ttk.Button(left, text="Clipboard OCR (soon)", command=self.clipboard_ocr).grid(sticky="ew", pady=(0, 8))
         ttk.Button(left, text="Undo Last Capture", command=self.undo_last_capture).grid(sticky="ew", pady=(0, 8))
-        ttk.Button(left, text="Export Note", command=self.export_note).grid(sticky="ew", pady=(0, 8))
+        ttk.Button(left, text="Export Text/AI Note", command=self.export_note).grid(sticky="ew", pady=(0, 8))
         ttk.Button(left, text="Clear Typed Draft", command=self.clear_typed_draft).grid(sticky="ew")
 
         middle = ttk.Frame(self, padding=(0, 10, 10, 10))
