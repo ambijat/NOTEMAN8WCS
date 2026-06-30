@@ -7,9 +7,14 @@ fragments, and intentional export.
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "noteman_wcs"
 
 from .domain import CaptureFragment, ExtractionMethod, Locator, LocatorKind, Note, Project, Source
 from .prompts import PromptTemplate, load_prompt_templates, render_prompt
