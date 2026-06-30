@@ -12,6 +12,7 @@ from .domain import (
     SourceType,
     Workspace,
 )
+from .image_capture import ImageCaptureResult, capture_image_fragment
 from .storage import FileProjectRepository
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "CaptureFragment",
     "ExtractionMethod",
     "FileProjectRepository",
+    "ImageCaptureResult",
     "Locator",
     "LocatorKind",
     "Note",
@@ -26,4 +28,5 @@ __all__ = [
     "Source",
     "SourceType",
     "Workspace",
+    "capture_image_fragment",
 ]
