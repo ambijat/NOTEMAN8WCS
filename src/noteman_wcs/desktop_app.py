@@ -84,17 +84,17 @@ class NoteManDesktopApp(tk.Tk):
         middle.rowconfigure(1, weight=1)
         middle.columnconfigure(0, weight=1)
         ttk.Label(middle, text="Typed / AI Draft", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
-        self.draft = tk.Text(middle, wrap="word", undo=True)
-        self.draft.grid(row=1, column=0, sticky="nsew")
+        draft_frame, self.draft = self._scrolled_text(middle, wrap="word", undo=True)
+        draft_frame.grid(row=1, column=0, sticky="nsew")
 
         right = ttk.Frame(self, padding=(0, 10, 10, 10))
         right.grid(row=0, column=2, sticky="nsew")
         right.rowconfigure(1, weight=1)
         right.rowconfigure(3, minsize=240, weight=0)
         right.columnconfigure(0, weight=1)
-        ttk.Label(right, text="Current Note Preview", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
-        self.preview = tk.Text(right, wrap="word", state="disabled")
-        self.preview.grid(row=1, column=0, sticky="nsew")
+        ttk.Label(right, text="Caputre Text Preview", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
+        preview_frame, self.preview = self._scrolled_text(right, wrap="word", state="disabled")
+        preview_frame.grid(row=1, column=0, sticky="nsew")
 
         prompt_controls = ttk.Frame(right)
         prompt_controls.grid(row=2, column=0, sticky="ew", pady=(12, 8))
@@ -120,14 +120,28 @@ class NoteManDesktopApp(tk.Tk):
         header.grid(row=0, column=0, sticky="ew", pady=(0, 6))
         header.columnconfigure(0, weight=1)
         ttk.Label(header, text="AI Prompt Workbench", font=("", 10, "bold")).grid(row=0, column=0, sticky="w")
-        ttk.Button(header, text="Save Draft", command=self.save_draft_as_fragment).grid(row=0, column=1, sticky="e")
-        self.prompt_box = tk.Text(workbench, height=8, wrap="word", state="disabled")
-        self.prompt_box.grid(row=1, column=0, sticky="nsew")
+        ttk.Button(header, text="Save (AI) Draft", command=self.save_draft_as_fragment).grid(row=0, column=1, sticky="e")
+        prompt_frame, self.prompt_box = self._scrolled_text(workbench, height=8, wrap="word", state="disabled")
+        prompt_frame.grid(row=1, column=0, sticky="nsew")
 
         self.status_var = tk.StringVar()
         ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").grid(
             row=1, column=0, columnspan=3, sticky="ew"
         )
+
+    @staticmethod
+    def _scrolled_text(parent: tk.Widget, **text_options: object) -> tuple[ttk.Frame, tk.Text]:
+        frame = ttk.Frame(parent)
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+
+        text = tk.Text(frame, **text_options)
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
+        text.configure(yscrollcommand=scrollbar.set)
+
+        text.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        return frame, text
 
     def choose_workspace(self) -> None:
         selected = filedialog.askdirectory(title="Choose NoteMan workspace")
