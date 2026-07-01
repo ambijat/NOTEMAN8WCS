@@ -8,8 +8,9 @@ class PromptTests(unittest.TestCase):
     def test_packaged_prompts_load(self):
         prompts = load_prompt_templates()
 
-        self.assertGreaterEqual(len(prompts), 20)
+        self.assertGreaterEqual(len(prompts), 21)
         self.assertTrue(any(prompt.title == "Clean OCR" for prompt in prompts))
+        self.assertTrue(any(prompt.title == "Classroom Pedagogy Notes" for prompt in prompts))
 
     def test_prompt_rendering_preserves_source_and_locator(self):
         fragment = CaptureFragment(
