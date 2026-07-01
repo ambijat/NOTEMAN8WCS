@@ -52,6 +52,16 @@ class DomainTests(unittest.TestCase):
             self.assertTrue((project_path / "ai_corpus").is_dir())
             self.assertTrue((project_path / "notes").is_dir())
 
+    def test_project_names_list_only_project_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            repo = FileProjectRepository(workspace)
+            repo.create_project(Project("Zettel Notes"))
+            repo.create_project(Project("Archive"))
+            (workspace / "loose-assets").mkdir()
+
+            self.assertEqual(["Archive", "Zettel Notes"], repo.list_project_names())
+
     def test_ai_draft_saves_to_corpus_markdown_and_json(self):
         project = Project("Thesis Notes")
         note = Note("Chapter One")

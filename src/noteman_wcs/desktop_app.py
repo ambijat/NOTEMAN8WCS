@@ -108,7 +108,8 @@ class NoteManDesktopApp(tk.Tk):
 
         ttk.Label(left, text="Project", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
         self.project_var = tk.StringVar(value="Thesis Notes")
-        ttk.Entry(left, textvariable=self.project_var).grid(sticky="ew", pady=(0, 8))
+        self.project_choice = ttk.Combobox(left, textvariable=self.project_var, values=[], state="normal")
+        self.project_choice.grid(sticky="ew", pady=(0, 8))
 
         ttk.Label(left, text="Note", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
         self.note_var = tk.StringVar(value="Chapter One")
@@ -205,6 +206,7 @@ class NoteManDesktopApp(tk.Tk):
             self.workspace_path = Path(selected)
             self.last_workspace_path = self.workspace_path
             self.workspace_label.configure(text=str(self.workspace_path))
+            self._refresh_project_choices()
             try:
                 save_last_workspace(self.workspace_path)
             except OSError:
@@ -250,6 +252,7 @@ class NoteManDesktopApp(tk.Tk):
             self._add_fragment(draft_text, ExtractionMethod.MANUAL, clear_draft=True)
         repo = FileProjectRepository(self.workspace_path)
         note_path = repo.save_note(self.current_project, self.current_note)  # type: ignore[arg-type]
+        self._refresh_project_choices()
         self._set_status(f"Exported to {note_path}")
 
     def clear_typed_draft(self) -> None:
@@ -308,6 +311,7 @@ class NoteManDesktopApp(tk.Tk):
         self.current_note.add_fragment(fragment)  # type: ignore[union-attr]
         self.draft.delete("1.0", "end")
         self._update_preview()
+        self._refresh_project_choices()
         self._set_status(f"Saved AI draft to {corpus_path}.")
 
     def change_page(self, delta: int) -> None:
@@ -355,6 +359,12 @@ class NoteManDesktopApp(tk.Tk):
     def _update_preview(self) -> None:
         content = "" if self.current_note is None else render_note_markdown(self.current_note)
         self._replace_text(self.preview, content, disabled=True)
+
+    def _refresh_project_choices(self) -> None:
+        if self.workspace_path is None:
+            return
+        projects = FileProjectRepository(self.workspace_path).list_project_names()
+        self.project_choice.configure(values=projects)
 
     def _replace_text(self, widget: tk.Text, text: str, disabled: bool = False) -> None:
         widget.configure(state="normal")

@@ -33,6 +33,18 @@ class FileProjectRepository:
         self._write_json(project_path / "notes" / f"{note.id}.json", asdict(note))
         return note_path
 
+    def list_project_names(self) -> list[str]:
+        if not self.workspace.is_dir():
+            return []
+        return sorted(
+            (
+                path.name
+                for path in self.workspace.iterdir()
+                if path.is_dir() and (path / "project.json").is_file()
+            ),
+            key=str.casefold,
+        )
+
     def save_ai_corpus_entry(self, project: Project, note: Note, fragment: CaptureFragment) -> Path:
         project_path = self.create_project(project)
         corpus_path = project_path / "ai_corpus"
