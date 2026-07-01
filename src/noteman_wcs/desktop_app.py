@@ -7,6 +7,8 @@ fragments, and intentional export.
 
 from __future__ import annotations
 
+import json
+import os
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -20,6 +22,58 @@ from .domain import CaptureFragment, ExtractionMethod, Locator, LocatorKind, Not
 from .prompts import PromptTemplate, load_prompt_templates, render_prompt
 from .storage import FileProjectRepository, render_note_markdown
 
+CONFIG_DIR_ENV = "XDG_CONFIG_HOME"
+CONFIG_FILE_NAME = "desktop_app.json"
+
+
+def desktop_config_path() -> Path:
+    config_root = Path(os.environ.get(CONFIG_DIR_ENV, Path.home() / ".config"))
+    return config_root / "noteman-wcs" / CONFIG_FILE_NAME
+
+
+def load_last_workspace(config_path: Path | None = None) -> Path | None:
+    path = config_path or desktop_config_path()
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    last_workspace = value.get("last_workspace") if isinstance(value, dict) else None
+    if not isinstance(last_workspace, str) or not last_workspace.strip():
+        return None
+    return Path(last_workspace).expanduser()
+
+
+def save_last_workspace(workspace_path: Path, config_path: Path | None = None) -> None:
+    path = config_path or desktop_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"last_workspace": str(workspace_path.expanduser().resolve())}, indent=2),
+        encoding="utf-8",
+    )
+
+
+def workspace_dialog_initial_dir(
+    current_workspace: Path | None,
+    last_workspace: Path | None,
+    fallback: Path | None = None,
+) -> Path:
+    if current_workspace is not None:
+        current = current_workspace.expanduser()
+        if current.is_dir():
+            return current
+
+    if last_workspace is not None:
+        last = last_workspace.expanduser()
+        if last.is_dir():
+            return last
+        if last.parent.is_dir():
+            return last.parent
+
+    fallback_dir = fallback or Path.home()
+    if fallback_dir.is_dir():
+        return fallback_dir
+    return Path.home()
+
 
 class NoteManDesktopApp(tk.Tk):
     def __init__(self) -> None:
@@ -29,6 +83,7 @@ class NoteManDesktopApp(tk.Tk):
         self.minsize(900, 580)
 
         self.workspace_path: Path | None = None
+        self.last_workspace_path: Path | None = load_last_workspace()
         self.current_project: Project | None = None
         self.current_note: Note | None = None
         self.prompts = load_prompt_templates()
@@ -144,10 +199,17 @@ class NoteManDesktopApp(tk.Tk):
         return frame, text
 
     def choose_workspace(self) -> None:
-        selected = filedialog.askdirectory(title="Choose NoteMan workspace")
+        initial_dir = workspace_dialog_initial_dir(self.workspace_path, self.last_workspace_path)
+        selected = filedialog.askdirectory(title="Choose NoteMan workspace", initialdir=str(initial_dir))
         if selected:
             self.workspace_path = Path(selected)
+            self.last_workspace_path = self.workspace_path
             self.workspace_label.configure(text=str(self.workspace_path))
+            try:
+                save_last_workspace(self.workspace_path)
+            except OSError:
+                self._set_status("Workspace selected. Last workspace preference could not be saved.")
+                return
             self._set_status("Workspace selected.")
 
     def new_note(self) -> None:
