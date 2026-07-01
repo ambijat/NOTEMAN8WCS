@@ -70,6 +70,20 @@ When a platform is chosen, the principal working repository must be chosen with 
 
 This keeps implementation work anchored to the platform where it can be built, tested, and understood most directly.
 
+## Cross-Platform Functional Parity
+
+The Python and Windows implementations should be true functional copies of each other, even when their languages, UI toolkits, and operating-system integrations differ.
+
+After a meaningful `noteman-wcs` session completes, the session should leave a platform parity handoff for `noteman-desktop`. The handoff must describe:
+
+- the exact user-visible behavior added or changed
+- the domain and storage effects that Windows must reproduce
+- the UI states, labels, warnings, and export rules that must match
+- the tests or manual checks used to prove the behavior on Ubuntu / Linux
+- the Windows-specific substitutions that are allowed without changing the function
+
+The Windows task should begin from that handoff, not from memory or reinterpretation. The aim is not identical source code. The aim is identical research behavior over the same workspace format.
+
 ### `NOTEMAN-OCR`
 
 Extractor adapters.

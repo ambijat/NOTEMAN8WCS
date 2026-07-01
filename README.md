@@ -40,6 +40,7 @@ It contains:
 - `docs/OLLAMA_SCREENSHOT_PROPOSAL.md`: project proposal for local screenshot reading
 - `docs/WORKSPACE_FORMAT.md`: shared storage contract for Python and C# implementations
 - `docs/REPOSITORY_STRATEGY.md`: what to do with old and future repositories
+- `docs/PLATFORM_PARITY_HANDOFF_TEMPLATE.md`: session handoff template for keeping Python and Windows behavior aligned
 
 ## Repository Ecosystem
 
