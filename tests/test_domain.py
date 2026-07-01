@@ -62,6 +62,29 @@ class DomainTests(unittest.TestCase):
 
             self.assertEqual(["Archive", "Zettel Notes"], repo.list_project_names())
 
+    def test_note_summaries_list_and_load_saved_notes(self):
+        project = Project("Thesis Notes")
+        note = Note("Chapter One")
+        note.add_fragment(
+            CaptureFragment(
+                text="Loaded text.",
+                source=Source("Research Book", SourceType.BOOK),
+                locator=Locator("12", LocatorKind.PAGE),
+            )
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = FileProjectRepository(Path(tmp))
+            repo.save_note(project, note)
+
+            summaries = repo.list_note_summaries(project.name)
+            loaded = repo.load_note(project.name, summaries[0].id)
+
+        self.assertEqual([(note.id, "Chapter One")], [(summary.id, summary.title) for summary in summaries])
+        self.assertIsNotNone(loaded)
+        self.assertEqual(note.id, loaded.id)  # type: ignore[union-attr]
+        self.assertEqual("Loaded text.", loaded.fragments[0].text)  # type: ignore[union-attr]
+
     def test_ai_draft_saves_to_corpus_markdown_and_json(self):
         project = Project("Thesis Notes")
         note = Note("Chapter One")

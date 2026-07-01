@@ -5,10 +5,27 @@ from __future__ import annotations
 import json
 import mimetypes
 import shutil
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .domain import Asset, CaptureFragment, Note, Project, new_id
+from .domain import (
+    Asset,
+    CaptureFragment,
+    ExtractionMethod,
+    Locator,
+    LocatorKind,
+    Note,
+    Project,
+    Source,
+    SourceType,
+    new_id,
+)
+
+
+@dataclass(frozen=True)
+class NoteSummary:
+    id: str
+    title: str
 
 
 class FileProjectRepository:
@@ -18,7 +35,7 @@ class FileProjectRepository:
         self.workspace = Path(workspace)
 
     def create_project(self, project: Project) -> Path:
-        project_path = self.workspace / project.name
+        project_path = self._project_path(project.name)
         project_path.mkdir(parents=True, exist_ok=True)
         (project_path / "assets").mkdir(exist_ok=True)
         (project_path / "ai_corpus").mkdir(exist_ok=True)
@@ -44,6 +61,50 @@ class FileProjectRepository:
             ),
             key=str.casefold,
         )
+
+    def load_project(self, project_name: str) -> Project | None:
+        project_path = self._project_path(project_name) / "project.json"
+        try:
+            value = json.loads(project_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(value, dict):
+            return None
+        try:
+            return Project(
+                name=str(value["name"]),
+                id=str(value["id"]),
+                created_at=str(value["created_at"]),
+            )
+        except KeyError:
+            return None
+
+    def list_note_summaries(self, project_name: str) -> list[NoteSummary]:
+        notes_path = self._project_path(project_name) / "notes"
+        if not notes_path.is_dir():
+            return []
+        summaries: list[NoteSummary] = []
+        for path in notes_path.glob("*.json"):
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(value, dict) and isinstance(value.get("id"), str) and isinstance(value.get("title"), str):
+                summaries.append(NoteSummary(id=value["id"], title=value["title"]))
+        return sorted(summaries, key=lambda summary: (summary.title.casefold(), summary.id))
+
+    def load_note(self, project_name: str, note_id: str) -> Note | None:
+        note_path = self._project_path(project_name) / "notes" / f"{note_id}.json"
+        try:
+            value = json.loads(note_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(value, dict):
+            return None
+        try:
+            return _note_from_dict(value)
+        except (KeyError, TypeError, ValueError):
+            return None
 
     def save_ai_corpus_entry(self, project: Project, note: Note, fragment: CaptureFragment) -> Path:
         project_path = self.create_project(project)
@@ -84,6 +145,9 @@ class FileProjectRepository:
     def _write_json(path: Path, value: dict) -> None:
         path.write_text(json.dumps(value, indent=2, default=str), encoding="utf-8")
 
+    def _project_path(self, project_name: str) -> Path:
+        return self.workspace / project_name
+
 
 def render_note_markdown(note: Note) -> str:
     lines = [f"# {note.title}", ""]
@@ -117,3 +181,38 @@ def render_ai_corpus_markdown(note: Note, fragment: CaptureFragment) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+def _note_from_dict(value: dict) -> Note:
+    note = Note(
+        title=str(value["title"]),
+        id=str(value["id"]),
+        created_at=str(value["created_at"]),
+    )
+    fragments = value.get("fragments", [])
+    if not isinstance(fragments, list):
+        raise ValueError("Note fragments must be a list.")
+    note.fragments.extend(_fragment_from_dict(fragment) for fragment in fragments if isinstance(fragment, dict))
+    return note
+
+
+def _fragment_from_dict(value: dict) -> CaptureFragment:
+    source = value["source"]
+    locator = value.get("locator", {})
+    if not isinstance(source, dict) or not isinstance(locator, dict):
+        raise ValueError("Fragment source and locator must be objects.")
+    return CaptureFragment(
+        text=str(value["text"]),
+        source=Source(
+            label=str(source["label"]),
+            type=SourceType(str(source.get("type", SourceType.UNKNOWN))),
+        ),
+        locator=Locator(
+            value=str(locator.get("value", "")),
+            kind=LocatorKind(str(locator.get("kind", LocatorKind.NONE))),
+        ),
+        method=ExtractionMethod(str(value.get("method", ExtractionMethod.MANUAL))),
+        asset_id=value.get("asset_id"),
+        id=str(value["id"]),
+        created_at=str(value["created_at"]),
+    )

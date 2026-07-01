@@ -86,6 +86,7 @@ class NoteManDesktopApp(tk.Tk):
         self.last_workspace_path: Path | None = load_last_workspace()
         self.current_project: Project | None = None
         self.current_note: Note | None = None
+        self.note_choice_index: dict[str, str] = {}
         self.prompts = load_prompt_templates()
 
         self._build_ui()
@@ -110,10 +111,15 @@ class NoteManDesktopApp(tk.Tk):
         self.project_var = tk.StringVar(value="Thesis Notes")
         self.project_choice = ttk.Combobox(left, textvariable=self.project_var, values=[], state="normal")
         self.project_choice.grid(sticky="ew", pady=(0, 8))
+        self.project_choice.bind("<<ComboboxSelected>>", self._refresh_note_choices)
+        self.project_choice.bind("<FocusOut>", self._refresh_note_choices)
+        self.project_choice.bind("<Return>", self._refresh_note_choices)
 
         ttk.Label(left, text="Note", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
         self.note_var = tk.StringVar(value="Chapter One")
-        ttk.Entry(left, textvariable=self.note_var).grid(sticky="ew", pady=(0, 8))
+        self.note_choice = ttk.Combobox(left, textvariable=self.note_var, values=[], state="normal")
+        self.note_choice.grid(sticky="ew", pady=(0, 8))
+        self.note_choice.bind("<<ComboboxSelected>>", self._load_selected_note)
         ttk.Button(left, text="New Note", command=self.new_note).grid(sticky="ew", pady=(0, 16))
 
         ttk.Label(left, text="Source", font=("", 10, "bold")).grid(sticky="w", pady=(0, 6))
@@ -207,6 +213,7 @@ class NoteManDesktopApp(tk.Tk):
             self.last_workspace_path = self.workspace_path
             self.workspace_label.configure(text=str(self.workspace_path))
             self._refresh_project_choices()
+            self._refresh_note_choices()
             try:
                 save_last_workspace(self.workspace_path)
             except OSError:
@@ -220,7 +227,9 @@ class NoteManDesktopApp(tk.Tk):
         if not project_name or not note_title:
             messagebox.showinfo("NoteMan", "Project and note title are required.")
             return
-        self.current_project = Project(project_name)
+        if self._load_note_for_display(note_title):
+            return
+        self.current_project = self._load_or_create_project(project_name)
         self.current_note = Note(note_title)
         self.draft.delete("1.0", "end")
         self._update_preview()
@@ -253,6 +262,7 @@ class NoteManDesktopApp(tk.Tk):
         repo = FileProjectRepository(self.workspace_path)
         note_path = repo.save_note(self.current_project, self.current_note)  # type: ignore[arg-type]
         self._refresh_project_choices()
+        self._refresh_note_choices()
         self._set_status(f"Exported to {note_path}")
 
     def clear_typed_draft(self) -> None:
@@ -312,6 +322,7 @@ class NoteManDesktopApp(tk.Tk):
         self.draft.delete("1.0", "end")
         self._update_preview()
         self._refresh_project_choices()
+        self._refresh_note_choices()
         self._set_status(f"Saved AI draft to {corpus_path}.")
 
     def change_page(self, delta: int) -> None:
@@ -365,6 +376,50 @@ class NoteManDesktopApp(tk.Tk):
             return
         projects = FileProjectRepository(self.workspace_path).list_project_names()
         self.project_choice.configure(values=projects)
+
+    def _refresh_note_choices(self, *_args: object) -> None:
+        if self.workspace_path is None:
+            return
+        summaries = FileProjectRepository(self.workspace_path).list_note_summaries(self.project_var.get().strip())
+        title_counts: dict[str, int] = {}
+        for summary in summaries:
+            title_counts[summary.title] = title_counts.get(summary.title, 0) + 1
+
+        self.note_choice_index = {}
+        values: list[str] = []
+        for summary in summaries:
+            display = summary.title if title_counts[summary.title] == 1 else f"{summary.title} [{summary.id}]"
+            self.note_choice_index[display] = summary.id
+            values.append(display)
+        self.note_choice.configure(values=values)
+
+    def _load_selected_note(self, *_args: object) -> None:
+        self._load_note_for_display(self.note_var.get().strip())
+
+    def _load_note_for_display(self, display: str) -> bool:
+        if self.workspace_path is None:
+            return False
+        note_id = self.note_choice_index.get(display)
+        if note_id is None:
+            return False
+        project_name = self.project_var.get().strip()
+        repo = FileProjectRepository(self.workspace_path)
+        note = repo.load_note(project_name, note_id)
+        if note is None:
+            self._set_status("Selected note could not be loaded.")
+            return False
+        self.current_project = self._load_or_create_project(project_name)
+        self.current_note = note
+        self.note_var.set(note.title)
+        self.draft.delete("1.0", "end")
+        self._update_preview()
+        self._set_status("Loaded existing note.")
+        return True
+
+    def _load_or_create_project(self, project_name: str) -> Project:
+        if self.workspace_path is None:
+            return Project(project_name)
+        return FileProjectRepository(self.workspace_path).load_project(project_name) or Project(project_name)
 
     def _replace_text(self, widget: tk.Text, text: str, disabled: bool = False) -> None:
         widget.configure(state="normal")
