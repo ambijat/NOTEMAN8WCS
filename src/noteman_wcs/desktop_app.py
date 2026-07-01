@@ -20,7 +20,7 @@ if __package__ in {None, ""}:
 
 from .domain import CaptureFragment, ExtractionMethod, Locator, LocatorKind, Note, Project, Source
 from .prompts import PromptTemplate, load_prompt_templates, render_prompt
-from .storage import FileProjectRepository, render_note_markdown
+from .storage import FileProjectRepository, render_fragment
 
 CONFIG_DIR_ENV = "XDG_CONFIG_HOME"
 CONFIG_FILE_NAME = "desktop_app.json"
@@ -87,6 +87,7 @@ class NoteManDesktopApp(tk.Tk):
         self.current_project: Project | None = None
         self.current_note: Note | None = None
         self.note_choice_index: dict[str, str] = {}
+        self.draft_loaded_from_note = False
         self.prompts = load_prompt_templates()
 
         self._build_ui()
@@ -230,6 +231,7 @@ class NoteManDesktopApp(tk.Tk):
         self.current_project = self._load_or_create_project(project_name)
         self.current_note = Note(note_title)
         self.draft.delete("1.0", "end")
+        self.draft_loaded_from_note = False
         self._update_preview()
         messagebox.showinfo("NoteMan", f"New note with {note_title} created.")
         self._set_status(f"New note with {note_title} created.")
@@ -256,7 +258,7 @@ class NoteManDesktopApp(tk.Tk):
             return
         self._ensure_note()
         draft_text = self._text_content(self.draft)
-        if draft_text:
+        if draft_text and not self._draft_matches_loaded_ai_retrieval(draft_text):
             self._add_fragment(draft_text, ExtractionMethod.MANUAL, clear_draft=True)
         repo = FileProjectRepository(self.workspace_path)
         note_path = repo.save_note(self.current_project, self.current_note)  # type: ignore[arg-type]
@@ -270,6 +272,7 @@ class NoteManDesktopApp(tk.Tk):
             return
         if messagebox.askyesno("NoteMan", "Clear typed draft text? Captured preview fragments will stay."):
             self.draft.delete("1.0", "end")
+            self.draft_loaded_from_note = False
             self._set_status("Typed draft cleared.")
 
     def undo_last_capture(self) -> None:
@@ -298,12 +301,16 @@ class NoteManDesktopApp(tk.Tk):
             self._set_status("Clipboard has no AI result text.")
             return
         self._replace_text(self.draft, text)
+        self.draft_loaded_from_note = False
         self._set_status("Pasted AI result into Typed / AI Draft. Review it before saving.")
 
     def save_draft_as_fragment(self) -> None:
         draft_text = self._text_content(self.draft)
         if not draft_text:
             self._set_status("Typed / AI Draft is empty.")
+            return
+        if self._draft_matches_loaded_ai_retrieval(draft_text):
+            self._set_status("Loaded AI draft text is already saved.")
             return
         if self.workspace_path is None:
             messagebox.showinfo("NoteMan", "Choose a workspace before saving AI draft.")
@@ -319,6 +326,7 @@ class NoteManDesktopApp(tk.Tk):
         )
         self.current_note.add_fragment(fragment)  # type: ignore[union-attr]
         self.draft.delete("1.0", "end")
+        self.draft_loaded_from_note = False
         self._update_preview()
         self._refresh_project_choices()
         self._refresh_note_choices()
@@ -338,6 +346,7 @@ class NoteManDesktopApp(tk.Tk):
         self.current_note.add_fragment(fragment)  # type: ignore[union-attr]
         if clear_draft:
             self.draft.delete("1.0", "end")
+            self.draft_loaded_from_note = False
         self._update_preview()
         self._set_status(f"Captured fragment from {fragment.citation_heading()}.")
 
@@ -367,8 +376,18 @@ class NoteManDesktopApp(tk.Tk):
         return next((prompt for prompt in self.prompts if prompt.title == selected), self.prompts[0])
 
     def _update_preview(self) -> None:
-        content = "" if self.current_note is None else render_note_markdown(self.current_note)
+        content = "" if self.current_note is None else self._render_note_by_ai_method(include_ai=False)
         self._replace_text(self.preview, content, disabled=True)
+
+    def _render_note_by_ai_method(self, include_ai: bool) -> str:
+        if self.current_note is None:
+            return ""
+        lines = [f"# {self.current_note.title}", ""]
+        for fragment in self.current_note.fragments:
+            is_ai = fragment.method == ExtractionMethod.AI_DRAFT
+            if is_ai == include_ai:
+                lines.extend(render_fragment(fragment))
+        return "\n".join(lines).rstrip() + "\n"
 
     def _refresh_project_choices(self) -> None:
         if self.workspace_path is None:
@@ -410,10 +429,17 @@ class NoteManDesktopApp(tk.Tk):
         self.current_project = self._load_or_create_project(project_name)
         self.current_note = note
         self.note_var.set(note.title)
-        self.draft.delete("1.0", "end")
+        ai_retrieval = self._render_note_by_ai_method(include_ai=True)
+        self._replace_text(self.draft, "" if ai_retrieval.strip() == f"# {note.title}" else ai_retrieval)
+        self.draft_loaded_from_note = bool(self._text_content(self.draft))
         self._update_preview()
         self._set_status("Loaded existing note.")
         return True
+
+    def _draft_matches_loaded_ai_retrieval(self, draft_text: str) -> bool:
+        if not self.draft_loaded_from_note:
+            return False
+        return draft_text == self._render_note_by_ai_method(include_ai=True).strip()
 
     def _load_or_create_project(self, project_name: str) -> Project:
         if self.workspace_path is None:
