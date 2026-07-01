@@ -21,6 +21,7 @@ class FileProjectRepository:
         project_path = self.workspace / project.name
         project_path.mkdir(parents=True, exist_ok=True)
         (project_path / "assets").mkdir(exist_ok=True)
+        (project_path / "ai_corpus").mkdir(exist_ok=True)
         (project_path / "notes").mkdir(exist_ok=True)
         self._write_json(project_path / "project.json", asdict(project))
         return project_path
@@ -31,6 +32,26 @@ class FileProjectRepository:
         note_path.write_text(render_note_markdown(note), encoding="utf-8")
         self._write_json(project_path / "notes" / f"{note.id}.json", asdict(note))
         return note_path
+
+    def save_ai_corpus_entry(self, project: Project, note: Note, fragment: CaptureFragment) -> Path:
+        project_path = self.create_project(project)
+        corpus_path = project_path / "ai_corpus"
+        entry_name = f"{note.id}-{fragment.id}"
+        markdown_path = corpus_path / f"{entry_name}.md"
+        json_path = corpus_path / f"{entry_name}.json"
+
+        markdown_path.write_text(render_ai_corpus_markdown(note, fragment), encoding="utf-8")
+        self._write_json(
+            json_path,
+            {
+                "id": entry_name,
+                "note_id": note.id,
+                "note_title": note.title,
+                "fragment": asdict(fragment),
+                "created_at": fragment.created_at,
+            },
+        )
+        return markdown_path
 
     def copy_asset(self, project: Project, source_path: Path) -> Asset:
         project_path = self.create_project(project)
@@ -66,3 +87,21 @@ def render_fragment(fragment: CaptureFragment) -> list[str]:
         fragment.text.strip(),
         "",
     ]
+
+
+def render_ai_corpus_markdown(note: Note, fragment: CaptureFragment) -> str:
+    lines = [
+        "# AI Draft Corpus Entry",
+        "",
+        f"Note: {note.title}",
+        f"Note ID: {note.id}",
+        f"Fragment ID: {fragment.id}",
+        f"Source: {fragment.citation_heading()}",
+        f"Method: {fragment.method.value}",
+        "",
+        "## Draft Text",
+        "",
+        fragment.text.strip(),
+        "",
+    ]
+    return "\n".join(lines)

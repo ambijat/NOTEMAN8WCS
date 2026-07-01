@@ -293,7 +293,22 @@ class NoteManDesktopApp(tk.Tk):
         if not draft_text:
             self._set_status("Typed / AI Draft is empty.")
             return
-        self._add_fragment(draft_text, ExtractionMethod.MANUAL, clear_draft=True)
+        if self.workspace_path is None:
+            messagebox.showinfo("NoteMan", "Choose a workspace before saving AI draft.")
+            return
+
+        self._ensure_note()
+        fragment = self._build_fragment(draft_text, ExtractionMethod.AI_DRAFT)
+        repo = FileProjectRepository(self.workspace_path)
+        corpus_path = repo.save_ai_corpus_entry(
+            self.current_project,  # type: ignore[arg-type]
+            self.current_note,  # type: ignore[arg-type]
+            fragment,
+        )
+        self.current_note.add_fragment(fragment)  # type: ignore[union-attr]
+        self.draft.delete("1.0", "end")
+        self._update_preview()
+        self._set_status(f"Saved AI draft to {corpus_path}.")
 
     def change_page(self, delta: int) -> None:
         try:
@@ -305,21 +320,24 @@ class NoteManDesktopApp(tk.Tk):
 
     def _add_fragment(self, text: str, method: ExtractionMethod, clear_draft: bool = False) -> None:
         self._ensure_note()
-        source_label = self.source_var.get().strip()
-        if not source_label or source_label == "Reference...":
-            source_label = "Unknown"
-        locator_value = self.locator_var.get().strip()
-        fragment = CaptureFragment(
-            text=text,
-            source=Source(source_label),
-            locator=Locator(locator_value, LocatorKind.PAGE if locator_value else LocatorKind.NONE),
-            method=method,
-        )
+        fragment = self._build_fragment(text, method)
         self.current_note.add_fragment(fragment)  # type: ignore[union-attr]
         if clear_draft:
             self.draft.delete("1.0", "end")
         self._update_preview()
         self._set_status(f"Captured fragment from {fragment.citation_heading()}.")
+
+    def _build_fragment(self, text: str, method: ExtractionMethod) -> CaptureFragment:
+        source_label = self.source_var.get().strip()
+        if not source_label or source_label == "Reference...":
+            source_label = "Unknown"
+        locator_value = self.locator_var.get().strip()
+        return CaptureFragment(
+            text=text,
+            source=Source(source_label),
+            locator=Locator(locator_value, LocatorKind.PAGE if locator_value else LocatorKind.NONE),
+            method=method,
+        )
 
     def _ensure_note(self) -> None:
         if self.current_project is None or self.current_note is None:

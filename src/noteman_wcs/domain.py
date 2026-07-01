@@ -40,6 +40,7 @@ class LocatorKind(StrEnum):
 
 class ExtractionMethod(StrEnum):
     MANUAL = "manual"
+    AI_DRAFT = "ai_draft"
     CLIPBOARD_TEXT = "clipboard_text"
     CLIPBOARD_OCR = "clipboard_ocr"
     IMAGE_OCR = "image_ocr"
