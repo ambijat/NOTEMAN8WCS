@@ -2,6 +2,8 @@
 
 This ontology contextualizes the old Visual Basic, Python, and C# NoteMan versions as one evolving idea: source-aware research capture.
 
+The system should be designed as a deliberate research loop, not an opaque automation chain. Each stage should inherit durable state from the previous stage, expose its boundary to the user, and stop only at a condition the researcher can verify.
+
 ## Historical Lineage
 
 The Visual Basic version established the first complete knowledge-management shape:
@@ -70,6 +72,11 @@ Source -> Locator -> Extraction -> Fragment -> Note -> Review
 - Export should prevent accidental duplicate commits.
 - Search should work across fragments, not only raw files.
 - External editors are optional; the app must remain able to read its own notes.
+- Workflow state must be durable enough that a session can be resumed without losing the source trail.
+- AI-generated text remains draft material until explicitly reviewed.
+- Export is the convergence point of the workflow, not merely a file write.
+- Automated actions must have visible boundaries, recoverable state, and user-controlled final acceptance.
+- The system must preserve researcher comprehension rather than replacing it with hidden automation.
 
 ## Reinvention
 
