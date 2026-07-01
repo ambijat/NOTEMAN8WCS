@@ -60,6 +60,16 @@ Responsibilities:
 
 Should depend on WCS core concepts and share the same workspace format as the Python implementation.
 
+## Principal Working Space By Platform
+
+When a platform is chosen, the principal working repository must be chosen with it:
+
+- Ubuntu / Linux work belongs first in `noteman-wcs`.
+- Windows desktop work belongs first in `noteman-desktop`.
+- Legacy behavior research may consult `ambijat/NOTEMAN`, but new feature work should not begin there.
+
+This keeps implementation work anchored to the platform where it can be built, tested, and understood most directly.
+
 ### `NOTEMAN-OCR`
 
 Extractor adapters.
