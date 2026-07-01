@@ -227,13 +227,12 @@ class NoteManDesktopApp(tk.Tk):
         if not project_name or not note_title:
             messagebox.showinfo("NoteMan", "Project and note title are required.")
             return
-        if self._load_note_for_display(note_title):
-            return
         self.current_project = self._load_or_create_project(project_name)
         self.current_note = Note(note_title)
         self.draft.delete("1.0", "end")
         self._update_preview()
-        self._set_status("New note ready.")
+        messagebox.showinfo("NoteMan", f"New note with {note_title} created.")
+        self._set_status(f"New note with {note_title} created.")
 
     def paste_clipboard_text(self) -> None:
         self._ensure_note()
